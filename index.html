@@ -57,13 +57,25 @@
             background: var(--tg-theme-bg-color, #fff);
             color: var(--tg-theme-text-color, #000);
         }
+
+        .status {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 8px;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            text-align: center;
+            font-size: 12px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="section">
             <h2>🔍 Умный поиск</h2>
-            <input type="text" class="search-box" placeholder="Введите ваш вопрос...">
+            <input type="text" class="search-box" id="searchInput" placeholder="Введите ваш вопрос...">
             <button class="button" onclick="search()">Найти</button>
         </div>
 
@@ -77,42 +89,105 @@
 
         <div class="section">
             <h2>✍️ Предложить улучшение</h2>
-            <textarea class="search-box" placeholder="Опишите ваше предложение..." style="height: 100px;"></textarea>
+            <textarea class="search-box" id="suggestionInput" placeholder="Опишите ваше предложение..." style="height: 100px;"></textarea>
             <button class="button" onclick="sendSuggestion()">Отправить</button>
         </div>
     </div>
 
+    <div id="status" class="status"></div>
+
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand();
+        
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            tg.ready();
+            tg.expand();
+        });
 
+        // Показать статус
+        function showStatus(message) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.display = 'block';
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        }
+
+        // Поиск
         function search() {
-            const query = document.querySelector('.search-box').value;
+            const query = document.getElementById('searchInput').value.trim();
             if (query) {
-                tg.sendData(JSON.stringify({
-                    action: 'search',
-                    query: query
-                }));
+                try {
+                    const data = {
+                        action: 'search',
+                        query: query
+                    };
+                    tg.sendData(JSON.stringify(data));
+                    showStatus('Поиск...');
+                    document.getElementById('searchInput').value = '';
+                } catch (error) {
+                    showStatus('Ошибка: ' + error.message);
+                }
+            } else {
+                showStatus('Введите текст для поиска');
             }
         }
 
+        // Открытие раздела
         function openSection(section) {
-            tg.sendData(JSON.stringify({
-                action: 'open_section',
-                section: section
-            }));
-        }
-
-        function sendSuggestion() {
-            const suggestion = document.querySelector('textarea').value;
-            if (suggestion) {
-                tg.sendData(JSON.stringify({
-                    action: 'suggestion',
-                    text: suggestion
-                }));
-                tg.close();
+            try {
+                const data = {
+                    action: 'open_section',
+                    section: section
+                };
+                tg.sendData(JSON.stringify(data));
+                showStatus('Открываю раздел...');
+            } catch (error) {
+                showStatus('Ошибка: ' + error.message);
             }
         }
+
+        // Отправка предложения
+        function sendSuggestion() {
+            const suggestion = document.getElementById('suggestionInput').value.trim();
+            if (suggestion) {
+                try {
+                    const data = {
+                        action: 'suggestion',
+                        text: suggestion
+                    };
+                    tg.sendData(JSON.stringify(data));
+                    showStatus('Предложение отправлено');
+                    document.getElementById('suggestionInput').value = '';
+                    setTimeout(() => {
+                        tg.close();
+                    }, 1000);
+                } catch (error) {
+                    showStatus('Ошибка: ' + error.message);
+                }
+            } else {
+                showStatus('Введите текст предложения');
+            }
+        }
+
+        // Обработка нажатия Enter в поле поиска
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                search();
+            }
+        });
+
+        // Настройка основной кнопки Telegram
+        tg.MainButton.setParams({
+            text: 'Закрыть',
+            color: '#2481cc'
+        });
+
+        tg.MainButton.onClick(function() {
+            tg.close();
+        });
     </script>
 </body>
 </html> 
